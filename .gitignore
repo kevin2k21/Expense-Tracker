@@ -1,0 +1,136 @@
+# OS-generated files
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+Desktop.ini
+
+# Editors and IDEs
+.idea/
+.vscode/
+.fleet/
+.cursor/
+.zed/
+*.iml
+*.swp
+*.swo
+*~
+
+# Local environment, credentials, and signing material
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p8
+*.p12
+*.pfx
+*.cer
+*.mobileprovision
+*.keystore
+*.jks
+keystore.properties
+signing.properties
+credentials.json
+service-account*.json
+google-services.json
+GoogleService-Info.plist
+
+# Logs, reports, and temporary files
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+*.orig
+*.hprof
+lint-results*.html
+lint-results*.xml
+lint-results*.txt
+
+# JavaScript / Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm/
+.pnpm-store/
+.eslintcache
+.nyc_output/
+coverage/
+.turbo/
+.parcel-cache/
+.metro-health-check*
+*.jsbundle
+
+# Yarn Berry: keep the checked-in runtime files only
+.yarn/*
+!.yarn/patches/
+!.yarn/plugins/
+!.yarn/releases/
+!.yarn/sdks/
+!.yarn/versions/
+
+# Ruby / Bundler / CocoaPods
+.bundle/
+/vendor/bundle/
+**/Pods/
+
+# Xcode
+**/build/
+DerivedData/
+ios/*.xcworkspace/
+*.xcworkspace/xcuserdata/
+**/xcuserdata/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata
+*.xccheckout
+*.moved-aside
+*.hmap
+*.ipa
+*.xcuserstate
+*.dSYM
+*.dSYM.zip
+.swiftpm/
+.build/
+**/.xcode.env.local
+
+# Android/IntelliJ
+.gradle/
+local.properties
+.cxx/
+.externalNativeBuild/
+captures/
+.kotlin/
+
+# Packaged application artifacts
+*.apk
+*.aab
+*.aar
+*.apks
+*.mapping
+
+# Local application and financial data
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+
+# fastlane
+**/fastlane/report.xml
+**/fastlane/Preview.html
+**/fastlane/screenshots
+**/fastlane/test_output
