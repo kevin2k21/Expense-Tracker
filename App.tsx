@@ -72,12 +72,12 @@ import {
   filterActivityByType,
   filterActivityRows,
   filterHomeActivityRows,
-  homeActivityPage,
   paginateActivityRows,
   type ActivityPeriod,
   type HomeMoneyView,
   type TransactionFilter,
 } from './src/features/transactions/activitySearch';
+import { calendarPeriodLabel } from './src/features/transactions/period';
 import { compareMonthlyIncomeAndSpending, monthKeyFor, recentIncomeCandidates, sortIncomeCandidatesByAmount, totalAssignedIncome } from './src/features/finance/incomeMonth';
 import { cashFlowTransactions, summarizeCashFlow, type CashFlowPeriod, type CashFlowSummary } from './src/features/finance/cashFlow';
 import { parseReminderTime } from './src/features/notifications/reviewReminder';
@@ -374,6 +374,7 @@ function PaisaApp() {
       {tab === 'transactions' ? <View style={s.activityScreen}>{content}</View> : <ScrollView
         style={s.mainScroll}
         ref={scrollRef}
+        nestedScrollEnabled
         contentContainerStyle={s.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -440,20 +441,26 @@ function Home({
   const [manualEditing, setManualEditing] = useState<Transaction | null>(null);
   const [moneyView, setMoneyView] = useState<HomeMoneyView>('spending');
   const [snapshotPeriod, setSnapshotPeriod] = useState<CashFlowPeriod>('today');
-  const [activityPage, setActivityPage] = useState(0);
+  const [snapshotPeriodOffset, setSnapshotPeriodOffset] = useState(0);
   const homeAsOf = finance?.cashFlowAsOf ?? Date.now();
   const periodTransactions = filterHomeActivityRows(
     transactions,
     snapshotPeriod,
     'netflow',
     homeAsOf,
+    snapshotPeriodOffset,
   );
-  const pagedActivity = homeActivityPage(
+  const activityRows = filterHomeActivityRows(
     transactions,
     snapshotPeriod,
     moneyView,
     homeAsOf,
-    activityPage,
+    snapshotPeriodOffset,
+  );
+  const snapshotPeriodLabel = calendarPeriodLabel(
+    snapshotPeriod,
+    new Date(homeAsOf),
+    snapshotPeriodOffset,
   );
   const spendingCategories = new Map<string, number>();
   for (const tx of periodTransactions.filter(item => item.amountMinor < 0)) {
@@ -661,13 +668,13 @@ function Home({
       <Section title="Money snapshot" action="CHOOSE A VIEW" />
       <View style={s.homePeriodRow}>
         {([
-          ['today', 'Daily'],
-          ['week', 'This week'],
-          ['month', 'This month'],
+          ['today', 'Today'],
+          ['week', 'Week'],
+          ['month', 'Month'],
         ] as const).map(([value, label]) => (
           <Pressable
             key={value}
-            onPress={() => { setSnapshotPeriod(value); setActivityPage(0); }}
+            onPress={() => { setSnapshotPeriod(value); setSnapshotPeriodOffset(0); }}
             accessibilityRole="button"
             accessibilityState={{ selected: snapshotPeriod === value }}
             style={[s.filterPill, snapshotPeriod === value && s.filterActive]}
@@ -676,9 +683,24 @@ function Home({
           </Pressable>
         ))}
       </View>
+      <View style={s.dayNavigation}>
+        <Pressable onPress={() => setSnapshotPeriodOffset(value => value - 1)}
+          accessibilityRole="button" accessibilityLabel={`Previous ${snapshotPeriod}`}
+          style={s.dayArrow}>
+          <Text style={s.dayArrowText}>‹</Text>
+        </Pressable>
+        <Text style={s.dayLabel}>{snapshotPeriodLabel}</Text>
+        <Pressable onPress={() => setSnapshotPeriodOffset(value => Math.min(0, value + 1))}
+          disabled={snapshotPeriodOffset === 0} accessibilityRole="button"
+          accessibilityLabel={`Next ${snapshotPeriod}`}
+          accessibilityState={{ disabled: snapshotPeriodOffset === 0 }}
+          style={[s.dayArrow, snapshotPeriodOffset === 0 && s.dayArrowDisabled]}>
+          <Text style={s.dayArrowText}>›</Text>
+        </Pressable>
+      </View>
       <View style={s.homeMetricRow}>
         {([['spending', 'Spending'], ['income', 'Income'], ['netflow', 'Net flow']] as const).map(([value, label]) =>
-          <Pressable key={value} onPress={() => { setMoneyView(value); setActivityPage(0); }} accessibilityRole="button"
+          <Pressable key={value} onPress={() => setMoneyView(value)} accessibilityRole="button"
             accessibilityState={{ selected: moneyView === value }}
             style={[s.homeMetricPill, moneyView === value && s.filterActive]}>
             <Text style={[s.filterText, moneyView === value && s.filterTextActive]}>{label}</Text>
@@ -686,41 +708,29 @@ function Home({
       </View>
       {moneyView === 'spending' ? <View style={s.card}>
         <CategorySnapshot breakdown={snapshot} />
-      </View> : moneyView === 'income' ? <IncomeSnapshot rows={creditedTransactions} period={snapshotPeriod} /> :
+      </View> : moneyView === 'income' ? <IncomeSnapshot rows={creditedTransactions} periodLabel={snapshotPeriodLabel} /> :
         <CashFlowCard summary={netFlow} accountName="All accounts" onChooseAccount={onOpenPlan} />}
-      <Section title="Activity" action={`${pagedActivity.total} TRANSACTIONS`} />
+      <Section title="Activity" action={`${activityRows.length} TRANSACTIONS`} />
       <View style={s.cardFlat}>
-        {pagedActivity.rows.map((tx, i) => (
+        <ScrollView style={s.homeTransactionScroller} nestedScrollEnabled
+          showsVerticalScrollIndicator={activityRows.length > 5}>
+        {activityRows.map((tx, i) => (
           <TransactionRow
             key={tx.id}
             tx={tx}
-            last={i === pagedActivity.rows.length - 1}
+            last={i === activityRows.length - 1}
             onPress={() => setSelected(tx)}
           />
         ))}
-        {pagedActivity.total === 0 && (
+        {activityRows.length === 0 && (
           <View style={s.empty}>
             <Text style={s.emptyTitle}>{moneyView === 'spending' ? 'No debited transactions' :
               moneyView === 'income' ? 'No credited transactions' : 'No transactions'}</Text>
             <Text style={s.emptyText}>Try another time period or view.</Text>
           </View>
         )}
+        </ScrollView>
       </View>
-      {pagedActivity.pageCount > 1 && <View style={s.activityPagination}>
-        <Pressable onPress={() => setActivityPage(Math.max(0, pagedActivity.page - 1))}
-          disabled={pagedActivity.page === 0} accessibilityRole="button"
-          accessibilityState={{ disabled: pagedActivity.page === 0 }}
-          style={[s.paginationButton, pagedActivity.page === 0 && s.paginationButtonDisabled]}>
-          <Text style={s.paginationButtonText}>‹ Previous</Text>
-        </Pressable>
-        <Text style={s.paginationLabel}>Page {pagedActivity.page + 1} of {pagedActivity.pageCount}</Text>
-        <Pressable onPress={() => setActivityPage(Math.min(pagedActivity.pageCount - 1, pagedActivity.page + 1))}
-          disabled={pagedActivity.page === pagedActivity.pageCount - 1} accessibilityRole="button"
-          accessibilityState={{ disabled: pagedActivity.page === pagedActivity.pageCount - 1 }}
-          style={[s.paginationButton, pagedActivity.page === pagedActivity.pageCount - 1 && s.paginationButtonDisabled]}>
-          <Text style={s.paginationButtonText}>Next ›</Text>
-        </Pressable>
-      </View>}
       <Pressable onPress={onOpenActivity} accessibilityRole="button" style={s.homeActivityLink}>
         <Text style={s.homeActivityLinkText}>View all activity →</Text>
       </Pressable>
@@ -895,15 +905,14 @@ function CashFlowCard({ summary, accountName, onChooseAccount, onInflow, onOutfl
   </View>;
 }
 
-function IncomeSnapshot({ rows, period }: {
+function IncomeSnapshot({ rows, periodLabel }: {
   rows: Transaction[];
-  period: CashFlowPeriod;
+  periodLabel: string;
 }) {
   const totalMinor = rows.reduce((sum, item) => sum + Math.max(0, item.amountMinor), 0);
   const visible = [...rows].sort((left, right) => right.amountMinor - left.amountMinor).slice(0, 4);
   return <View style={s.cashFlowCard}>
-    <Text style={s.planLabel}>CREDITED TRANSACTIONS · {period === 'today' ? 'TODAY' :
-      period === 'week' ? 'THIS WEEK' : 'THIS MONTH'}</Text>
+    <Text style={s.planLabel}>CREDITED TRANSACTIONS · {periodLabel.toLocaleUpperCase()}</Text>
     <Text style={s.cashFlowValue}>+{money(totalMinor)}</Text>
     <Text style={s.cashFlowNote}>All confirmed credits received during this period.</Text>
     {visible.length ? <View style={s.incomeSnapshotList}>{visible.map(item =>
@@ -3083,6 +3092,7 @@ const s = StyleSheet.create({
   homeMetricPill: { flex: 1, minHeight: 44, borderRadius: radii.md, borderWidth: 1, borderColor: C.line,
     backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
   homePeriodRow: { flexDirection: 'row', marginBottom: 12 },
+  homeTransactionScroller: { maxHeight: 74 * 5 },
   activityPagination: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.lg, marginBottom: spacing.md },
   paginationButton: { backgroundColor: C.surface, borderRadius: radii.md, paddingHorizontal: spacing.md, minHeight: 44, justifyContent: 'center', borderWidth: 1, borderColor: C.line },
   paginationButtonDisabled: { opacity: 0.35 },

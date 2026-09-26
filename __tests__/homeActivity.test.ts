@@ -63,4 +63,20 @@ describe('home activity filter', () => {
       total: 6,
     });
   });
+
+  it('filters a previously selected day, week, or month as a complete period', () => {
+    const reference = new Date(2026, 8, 26, 18).getTime();
+    const historical = [
+      transaction('previous day', -1_000, 25),
+      transaction('previous week', -2_000, 18),
+      transaction('previous month', -3_000, 10, { occurredAt: new Date(2026, 7, 10, 12).getTime() }),
+    ];
+
+    expect(filterHomeActivityRows(historical, 'today', 'spending', reference, -1)
+      .map(row => row.id)).toEqual(['previous day']);
+    expect(filterHomeActivityRows(historical, 'week', 'spending', reference, -1)
+      .map(row => row.id)).toEqual(['previous week']);
+    expect(filterHomeActivityRows(historical, 'month', 'spending', reference, -1)
+      .map(row => row.id)).toEqual(['previous month']);
+  });
 });

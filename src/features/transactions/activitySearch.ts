@@ -1,4 +1,5 @@
 import type { Transaction } from '../../types';
+import { calendarPeriodRange } from './period';
 
 export type ActivityPeriod = 'all' | 'today' | 'week' | 'month';
 export type TransactionFilter = 'All' | 'Expenses' | 'Income' | 'Review';
@@ -52,13 +53,12 @@ export function filterHomeActivityRows<T extends Transaction>(
   period: Exclude<ActivityPeriod, 'all'>,
   view: HomeMoneyView,
   now: number,
+  periodOffset = 0,
 ): T[] {
-  return filterActivityRows(rows, {
-    query: '',
-    accountId: null,
-    period,
-    now,
-  }).filter(tx => tx.source !== 'demo' &&
+  const range = calendarPeriodRange(period, new Date(now), periodOffset);
+  const end = periodOffset === 0 ? Math.min(range.end.getTime(), now + 1) : range.end.getTime();
+  return rows.filter(tx => tx.occurredAt >= range.start.getTime() && tx.occurredAt < end)
+    .filter(tx => tx.source !== 'demo' &&
     !(tx.source === 'manual' && tx.possibleDuplicate) &&
     (tx.source !== 'notification' || tx.reviewStatus === 'confirmed') &&
     (view === 'spending' ? tx.amountMinor < 0 :
@@ -73,7 +73,8 @@ export function homeActivityPage<T extends Transaction>(
   now: number,
   requestedPage: number,
   pageSize = 5,
+  periodOffset = 0,
 ): { rows: T[]; page: number; pageCount: number; total: number } {
-  const filtered = filterHomeActivityRows(rows, period, view, now);
+  const filtered = filterHomeActivityRows(rows, period, view, now, periodOffset);
   return paginateActivityRows(filtered, requestedPage, pageSize);
 }
